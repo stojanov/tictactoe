@@ -8,7 +8,7 @@
 
 It's built with create-react-app so it's pretty easy to start
 
-    npm start
+    npm run start
 or if you are using yarn
 
     yarn start
