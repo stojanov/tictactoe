@@ -7,6 +7,8 @@ import TicTacToe from './Game';
 
 const gameInstance = new TicTacToe();
 
+// TODO: Refactor everything
+
 export default class App extends Component {
     constructor() {
         super();
@@ -17,8 +19,11 @@ export default class App extends Component {
             won: []
         };
 
+        this.locked = false;
         this.handleClick = this.handleClick.bind(this);
-    }   
+
+        this.nextPlayer = 0;
+    }
 
     resetGame() {
         // Reset keys to force reset on all boxes.
@@ -26,18 +31,33 @@ export default class App extends Component {
 
         gameInstance.resetGame();
 
-        this.setState({ resetKey: newKey, won: [], Board: gameInstance.getBoard() });
+        this.setState({ resetKey: newKey, won: []}, () => {
+            if (this.nextPlayer == 0) {
+                this.gameTick();
+                this.nextPlayer = 1;
+            } else {
+                this.nextPlayer = 0;
+                this.setState({ Board: gameInstance.getBoard() });
+            }
+    
+            this.locked = false;
+        });
     }
 
-    async handleClick(id) {
-        if (gameInstance.makeMove(id)) return;
+    async gameTick(id) {
+        if (id) {
+            if (gameInstance.makeMove(id)) return;
+            this.setState({ Board: gameInstance.getBoard() });
+            this.gameTick();
+            return;
+        }
 
         await gameInstance.ComputerMove();
 
         const [ won, arr ] = gameInstance.hasWon();
-        console.log(won);
+
         if (won >= 0 && won <= 2) {
-            
+            this.locked = true;
             this.setState({
                 won: arr
             });
@@ -47,6 +67,12 @@ export default class App extends Component {
         }
 
         this.setState({ Board: gameInstance.getBoard() });
+    }
+
+    async handleClick(id) {
+        if (this.locked) return;
+
+        await this.gameTick(id);
     }
 
     renderButtons(b) {
@@ -60,7 +86,7 @@ export default class App extends Component {
             if (this.state.won.length > 0) {
                 if (this.state.won.includes(String(x))) {
                     bg = 1;
-                }    
+                }
             }
 
             if (player1) {
@@ -68,6 +94,7 @@ export default class App extends Component {
             } else if (player2) {
                 play = 1;
             }
+
             return (
                 <ClickableBox
                     key={x + this.state.resetKey} 

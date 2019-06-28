@@ -66,9 +66,7 @@ const getFreeSpots = state => state.PLAYED_IDS
 
 const getFromPlayer = (player, a, b) => !player ? a : b;
 
-// Originally with alpha beta prunning but it had weird results
-// Surely i did something wrong
-const minimax = (state, player, depth = 0) => {
+const minimax = (state, player, depth = 0, alpha = Number.MIN_VALUE, beta = Number.MAX_VALUE) => {
     const free = getFreeSpots(state);
 
     if (hasWon(state.BOARD[0])) 
@@ -86,21 +84,39 @@ const minimax = (state, player, depth = 0) => {
         const move = free[i];
 
         makeMove(state, player, move);
-        const score = minimax(state, switchPlayer(player), depth + 1);
+        const score = minimax(state, switchPlayer(player), depth + 1, alpha, beta);
         removeLastMove(state);
 
         const MaxOrMin = getFromPlayer(player, Math.max, Math.min);
         bestScore = MaxOrMin(score, bestScore);
+
+        if (!player) { // 0 = Maximizing
+            alpha = Math.max(bestScore, alpha);
+            
+            if (beta <= alpha) break;
+        }
+        else {
+            beta = Math.min(bestScore, beta);
+
+            if (beta <= alpha) break;
+        }
+
     }
 
     return bestScore;
 }
 
-const getBestMove = (state, player) => { // 0 Max
+const getBestMove = (state, player) => new Promise((res, rej) => { // 0 Max
     const free = getFreeSpots(state);
     const newState = clone(state);
     let bestMove = { id: -1, value: getFromPlayer(player, Number.MIN_VALUE, Number.MAX_VALUE) };
     
+    // If first move randomize
+    if (free.length == 9) {
+        res((Math.ceil(Math.random() * 9)));
+        return;
+    }
+
     for(let i = 0; i < free.length; i++) {
         const move = free[i];
         makeMove(newState, player, move);
@@ -115,8 +131,8 @@ const getBestMove = (state, player) => { // 0 Max
         }
     }
     
-    return bestMove.id;
-}
+    res(bestMove.id);
+});
 
 // Interface for the world to use
 export default class TicTacToe {
@@ -145,6 +161,8 @@ export default class TicTacToe {
 
     async ComputerMove() {
         const id = await getBestMove(this.GameState, this.GameState.CURRENT_PLAYER);
+
+        console.log("New Computer move:", id);
         if (id == -1) return;
 
         this.makeMove(id);
